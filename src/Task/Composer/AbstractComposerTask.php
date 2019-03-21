@@ -8,6 +8,7 @@ namespace TYPO3\Surf\Task\Composer;
  * file that was distributed with this source code.
  */
 
+use Symfony\Component\OptionsResolver\OptionsResolver;
 use TYPO3\Flow\Utility\Files;
 use TYPO3\Surf\Domain\Model\Application;
 use TYPO3\Surf\Domain\Model\Deployment;
@@ -16,7 +17,6 @@ use TYPO3\Surf\Domain\Model\Task;
 use TYPO3\Surf\Domain\Service\ShellCommandServiceAwareInterface;
 use TYPO3\Surf\Domain\Service\ShellCommandServiceAwareTrait;
 use TYPO3\Surf\Exception\InvalidConfigurationException;
-use TYPO3\Surf\Exception\TaskExecutionException;
 
 /**
  * Installs the composer packages based on a composer.json file in the projects root folder
@@ -44,7 +44,7 @@ abstract class AbstractComposerTask extends Task implements ShellCommandServiceA
      *
      * @var array
      */
-    protected $suffix = ['2>&1'];
+    private $suffix = ['2>&1'];
 
     /**
      * @param \TYPO3\Surf\Domain\Model\Node $node
@@ -56,13 +56,15 @@ abstract class AbstractComposerTask extends Task implements ShellCommandServiceA
      */
     public function execute(Node $node, Application $application, Deployment $deployment, array $options = [])
     {
-        if (isset($options['useApplicationWorkspace']) && $options['useApplicationWorkspace'] === true) {
+        $options = $this->configureOptions($options);
+
+        if ($options['useApplicationWorkspace']) {
             $composerRootPath = $deployment->getWorkspacePath($application);
         } else {
             $composerRootPath = $deployment->getApplicationReleasePath($application);
         }
 
-        if (isset($options['nodeName'])) {
+        if ($options['nodeName'] !== null) {
             $node = $deployment->getNode($options['nodeName']);
             if ($node === null) {
                 throw new InvalidConfigurationException(sprintf('Node "%s" not found', $options['nodeName']), 1369759412);
@@ -98,21 +100,12 @@ abstract class AbstractComposerTask extends Task implements ShellCommandServiceA
      * @return array
      * @throws \TYPO3\Surf\Exception\TaskExecutionException
      */
-    protected function buildComposerCommands($manifestPath, array $options)
+    private function buildComposerCommands($manifestPath, array $options)
     {
-        if (!isset($options['composerCommandPath'])) {
-            throw new TaskExecutionException('Composer command not found. Set the composerCommandPath option.', 1349163257);
-        }
-
-        $additionalArguments = [];
-        if (isset($options['additionalArguments'])) {
-            $additionalArguments = (array)$options['additionalArguments'];
-        }
-
         $arguments = array_merge(
             [escapeshellcmd($options['composerCommandPath']), $this->command],
             $this->arguments,
-            array_map('escapeshellarg', $additionalArguments),
+            array_map('escapeshellarg', (array)$options['additionalArguments']),
             $this->suffix
         );
         $script = implode(' ', $arguments);
@@ -133,7 +126,7 @@ abstract class AbstractComposerTask extends Task implements ShellCommandServiceA
      * @param \TYPO3\Surf\Domain\Model\Deployment $deployment
      * @return bool
      */
-    protected function composerManifestExists($path, Node $node, Deployment $deployment)
+    private function composerManifestExists($path, Node $node, Deployment $deployment)
     {
         // In dry run mode, no checkout is there, this we must not assume a composer.json is there!
         if ($deployment->isDryRun()) {
@@ -147,5 +140,17 @@ abstract class AbstractComposerTask extends Task implements ShellCommandServiceA
         }
 
         return true;
+    }
+
+    /**
+     * @param OptionsResolver $resolver
+     */
+    protected function resolveOptions(OptionsResolver $resolver)
+    {
+        $resolver->setRequired('composerCommandPath');
+        $resolver->setDefault('additionalArguments', []);
+        $resolver->setDefault('useApplicationWorkspace', false);
+        $resolver->setDefault('nodeName', null);
+        $resolver->setAllowedTypes('additionalArguments', ['array', 'string']);
     }
 }

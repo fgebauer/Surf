@@ -8,24 +8,6 @@ TYPO3\\Surf\\Task\\Composer\\AbstractComposerTask
 
     Installs the composer packages based on a composer.json file in the projects root folder
 
-    .. php:attr:: command
-
-        protected string
-
-        Command to run
-
-    .. php:attr:: arguments
-
-        protected array
-
-        Arguments for the command
-
-    .. php:attr:: suffix
-
-        protected array
-
-        Suffix for the command
-
     .. php:attr:: shell
 
         protected ShellCommandService
@@ -78,6 +60,11 @@ TYPO3\\Surf\\Task\\Composer\\AbstractComposerTask
         :param $deployment:
         :returns: bool
 
+    .. php:method:: resolveOptions(OptionsResolver $resolver)
+
+        :type $resolver: OptionsResolver
+        :param $resolver:
+
     .. php:method:: setShellCommandService(ShellCommandService $shellCommandService)
 
         :type $shellCommandService: ShellCommandService
@@ -101,8 +88,3 @@ TYPO3\\Surf\\Task\\Composer\\AbstractComposerTask
         :type $options: array
         :param $options:
         :returns: array
-
-    .. php:method:: resolveOptions(OptionsResolver $resolver)
-
-        :type $resolver: OptionsResolver
-        :param $resolver:
